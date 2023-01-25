@@ -18,4 +18,8 @@ public class BookHouse {
 
     @Column(name = "quantity")
     private int quantity;
+    @Version
+    @Column(name = "version")
+    private Long version;
+
 }

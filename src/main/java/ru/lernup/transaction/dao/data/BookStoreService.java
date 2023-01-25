@@ -1,6 +1,10 @@
 package ru.lernup.transaction.dao.data;
 
 
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
@@ -19,11 +23,13 @@ public class BookStoreService {
     private final SpringDataOrder order;
     private final SpringDataConsumer consumer;
     private final SpringDataBookStore bookStore;
+    private final EntityManager entitymanager;
 
     public BookStoreService(SpringDataAuthor author, SpringDataBook book,
                             SpringDataEmployee employee, SpringDataOrder order,
                             SpringDataConsumer consumer,
-                             SpringDataBookStore bookStore) {
+                            SpringDataBookStore bookStore,
+                            EntityManager entityManager) {
         this.author = author;
         this.book = book;
         this.employee = employee;
@@ -31,6 +37,7 @@ public class BookStoreService {
         this.consumer = consumer;
         this.bookStore = bookStore;
 
+        this.entitymanager = entityManager;
     }
     public Author getAuthor(Long id){
         return author.getById(id);
@@ -93,34 +100,42 @@ public class BookStoreService {
         book1.setIdAuthor(author.getByName(nameAuthor));
         book.save(book1);
     }
+
     @Transactional(propagation = Propagation.REQUIRED,
             isolation = Isolation.READ_COMMITTED,
             rollbackFor = {RuntimeException.class})
-    public void buyBook(String nameStore,String nameConsumer,String nameBook, int quantity){
+    public void buyBook(String nameStore,String nameConsumer,String nameBook, int quantity) {
 
-try {
+      try {
 
-    BookStore bookStore1 = bookStore.getStoreByName(nameStore);
-    Consumer consumer1 = consumer.getByName(nameConsumer);
-    OrderConsumer orderConsumer = new OrderConsumer();
-    orderConsumer.setConsumer(consumer1);
-    orderConsumer.setIdStore(bookStore1);
-    orderConsumer.setDetailsOrders(new ArrayList<DetailsOrder>());
-    DetailsOrder detailsOrder = new DetailsOrder();
-    detailsOrder.setQuantity(quantity);
-    detailsOrder.setIdOrder(orderConsumer);
-    detailsOrder.setIdBook(book.findBookByNameBook(nameBook));
-    int i = detailsOrder.getIdBook().getBookHouse().getQuantity() - detailsOrder.getQuantity();
-    if (i >= 0) {
-        detailsOrder.getIdBook().getBookHouse().setQuantity(i);
-        orderConsumer.getDetailsOrders().add(detailsOrder);
-        consumer1.getOrderConsumer().add(orderConsumer);
-        bookStore.save(bookStore1);
-        consumer.save(consumer1);
-    } else throw new NotHaveBookException(" данная книга была куплена другим пользователем");
-} catch (NotHaveBookException e){
-    System.out.println(e);
-}
+
+          BookStore bookStore1 = bookStore.getStoreByName(nameStore);
+          Consumer consumer1 = consumer.getByName(nameConsumer);
+          OrderConsumer orderConsumer = new OrderConsumer();
+          orderConsumer.setConsumer(consumer1);
+          orderConsumer.setIdStore(bookStore1);
+          orderConsumer.setDetailsOrders(new ArrayList<DetailsOrder>());
+          DetailsOrder detailsOrder = new DetailsOrder();
+          detailsOrder.setQuantity(quantity);
+          detailsOrder.setIdOrder(orderConsumer);
+          Book book1 = book.findBookByNameBook(nameBook);
+          BookHouse bookHouse = book1.getBookHouse();
+          entitymanager.lock(bookHouse, LockModeType.OPTIMISTIC);
+          detailsOrder.setIdBook(book1);
+          int i = detailsOrder.getIdBook().getBookHouse().getQuantity() - detailsOrder.getQuantity();
+          if (i >= 0) {
+              detailsOrder.getIdBook().getBookHouse().setQuantity(i);
+              orderConsumer.getDetailsOrders().add(detailsOrder);
+              consumer1.getOrderConsumer().add(orderConsumer);
+
+              bookStore.save(bookStore1);
+              consumer.save(consumer1);
+          } else
+              throw new NotHaveBookException(consumer1.getAllNameConsumer() + " извините данная книга была куплена другим пользователем ");
+      }catch (NotHaveBookException e){
+          System.out.println(e);
+      }
+
         }
     public List<Book> getAllBook(){
         return bookStore.getAllBook();

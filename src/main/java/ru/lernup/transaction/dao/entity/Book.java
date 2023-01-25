@@ -36,7 +36,6 @@ public class Book {
     @JoinColumn(name = "id_store")
     private BookStore idStore;
 
-
     @Override
     public String toString() {
         return  nameBook + " " + idAuthor.getAllNameAuthor() + " Год выпуска " + ageBook + " колличество страниц "
