@@ -5,6 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import ru.lernup.transaction.dao.data.BookStoreService;
+import ru.lernup.transaction.dao.exeption.NotHaveBookException;
 
 
 @SpringBootApplication
@@ -21,26 +22,38 @@ public class TransactionApplication {
 
 
         new Thread(() -> {
-
+           while (true){
             try {
 
-                bookStoreDao.buyBook("Shopper", "Steve", "Tree", 1);
+               if(bookStoreDao.buyBook("Shopper", "Steve", "Tree", 1))
+                   break;
             } catch (ObjectOptimisticLockingFailureException g) {
-                System.out.println(g.toString());
-
+                continue;
             }
+            catch (NotHaveBookException e){
+                System.out.println(e.toString());
+                break;
+            }
+           }
         }).start();
 
 
             new Thread(() -> {
-                try {
+                while (true) {
+                    try {
 
-                    bookStoreDao.buyBook("Shopper", "GreedOFRath", "Tree", 1);
-                } catch (ObjectOptimisticLockingFailureException g) {
-                    System.out.println(g.toString() );
-                }
+                        if(bookStoreDao.buyBook("Shopper", "GreedOFRath",
+                                "Tree", 1))
+                            break;
+                    } catch (ObjectOptimisticLockingFailureException g) {
+                        continue;
+                    }
+                    catch (NotHaveBookException e){
+                        System.out.println(e.toString());
+                        break;
+                    }
 
-            }).start();
+                } }).start();
         }
 
 }

@@ -104,9 +104,9 @@ public class BookStoreService {
     @Transactional(propagation = Propagation.REQUIRED,
             isolation = Isolation.READ_COMMITTED,
             rollbackFor = {RuntimeException.class})
-    public void buyBook(String nameStore,String nameConsumer,String nameBook, int quantity) {
+    public boolean buyBook(String nameStore,String nameConsumer,String nameBook, int quantity) {
 
-      try {
+
 
 
           BookStore bookStore1 = bookStore.getStoreByName(nameStore);
@@ -130,11 +130,10 @@ public class BookStoreService {
 
               bookStore.save(bookStore1);
               consumer.save(consumer1);
+              return true;
           } else
               throw new NotHaveBookException(consumer1.getAllNameConsumer() + " извините данная книга была куплена другим пользователем ");
-      }catch (NotHaveBookException e){
-          System.out.println(e);
-      }
+
 
         }
     public List<Book> getAllBook(){
